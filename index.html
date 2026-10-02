@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ex Lover</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { display: flex; justify-content: center; align-items: center; min-height: 100vh; background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #feada6 100%); overflow: hidden; }
+        .bg-heart { position: absolute; color: rgba(255, 75, 110, 0.3); font-size: 20px; animation: floatUp 6s linear infinite; bottom: -20px; z-index: 0; pointer-events: none; }
+        @keyframes floatUp { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(-105vh) rotate(360deg); opacity: 0; } }
+        
+        .card-container { position: relative; width: 90%; max-width: 400px; background: transparent; border-radius: 24px; box-shadow: none; padding: 30px; text-align: center; z-index: 10; }
+        
+        /* GIF (Frame မပါ) */
+        .gif-container { width: 180px; height: 180px; margin: 15px auto 5px auto; }
+        .gif-container img { width: 100%; height: 100%; border-radius: 0; object-fit: contain; background: transparent; box-shadow: none; }
+        
+        /* GIF အောက်ရှိ Warning စာသား (Frame မပါ၊ အလွတ်) */
+        .warning-text {
+            min-height: 25px;
+            font-size: 15px;
+            font-weight: bold;
+            color: #d63031;
+            margin-bottom: 15px;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+            transition: opacity 0.3s ease;
+            opacity: 0;
+        }
+
+        .btn-group { position: relative; min-height: 80px; display: flex; justify-content: center; align-items: center; gap: 15px; flex-wrap: wrap; }
+        button { padding: 12px 25px; font-weight: bold; border: none; border-radius: 50px; cursor: pointer; transition: 0.2s ease; font-size: 16px; }
+        .primary-btn { background: linear-gradient(135deg, #ff416c, #ff4b2b); color: rgb(184, 0, 0); box-shadow: 0 4px 15px rgba(255, 65, 108, 0.4); }
+        .secondary-btn { background: #ffffff; color: #ff416c; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .fullscreen-active { position: fixed !important; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; border-radius: 0; font-size: 30px; }
+        .result-item { font-size: 14px; margin: 10px 0; border-bottom: 1px dashed #e84393; padding-bottom: 5px; text-align: left; color: #2d3436; }
+        
+        #questionText { color: #2d3436; text-shadow: 0 1px 2px rgba(255,255,255,0.8); }
+        #sendingStatus { display: none; font-size: 14px; color: #d63031; margin-top: 10px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div id="heartsContainer"></div>
+
+    <div class="card-container" id="mainCard">
+        <h2 id="questionText">ပြန် 12 ကြမလား ?</h2>
+        <div class="gif-container"><img id="statusGif" src="https://media.tenor.com/rwZ1KmV8ZAoAAAAi/bubu-dudu-sseeyall.gif"></div>
+        
+        <div id="warningContainer" class="warning-text"></div>
+
+        <div class="btn-group" id="btnGroup">
+            <button id="yesBtn" class="primary-btn" onclick="handleInteraction(true)">Yes</button>
+            <button id="noBtn" class="secondary-btn" onclick="handleInteraction(false)">No</button>
+        </div>
+        <div id="sendingStatus">အဖြေများကို ပို့ပေးနေပါသည်... 💌</div>
+    </div>
+
+    <div class="card-container" id="successScreen" style="display: none;">
+        <div id="captureArea">
+            <h3 style="color: #d63031;">💖 Our Love Agreement</h3>
+            <div id="summaryList"></div>
+        </div>
+        <button class="primary-btn" style="width:100%; margin-top:20px;" onclick="saveToPNG()">ဒီစာမျက်နှာကို PNG သိမ်းမယ် 📸</button>
+    </div>
+
+    <script>
+        const FORMSPREE_URL = "https://formspree.io/f/xzezqljr";
+        const steps = [
+            { question: "ပြန် 12 ကြမလား ?", yes: "Yes", no: "No", gif: "https://media.tenor.com/rwZ1KmV8ZAoAAAAi/bubu-dudu-sseeyall.gif", type: "shrink" },
+            { question: "သတိရနေခဲ့တာ သိလား.. ", yes: "တူတူပဲ", no: "မရတော့ပါဘူး", gif: "https://media.tenor.com/ylPEHnS2vRsAAAAi/tkthao219-bubududu.gif", type: "run" },
+            { question: "ချစ်သေးတယ်မလား ?", yes: "ချစ်တယ်", no: "မချစ်တော့ဘူး", gif: "https://media.tenor.com/Ye5xUuFobE4AAAAi/sseeyall-bubu-dudu.gif", type: "fade" },
+            { question: "ပြန်လာမယ်မလား", yes: "အင်း", no: "တော်ပြီ", gif: "https://media.tenor.com/yVORhJ_dYNQAAAAi/bubu-dudu-sseeyall.gif", type: "fullscreen" },
+            { question: "ဒါဆို ပြန်ချစ်ကြမယ်နော်", yes: "Yes", no: "Nope", gif: "https://media.tenor.com/Zrr4L_Wd4JkAAAAi/bubu-rub-bubu-love-dudu.gif", type: "magnet" }
+        ];
+
+        // Random Warning စာသားများ
+        const warningMessages = [
+            "⚠️ ထပ်စဉ်းစားပါဦး 🥺",
+            "⚠️ မငြင်းပါနဲ့နော်... 💔",
+            "⚠️ ဒီလိုတော့ မလုပ်ပါနဲ့... 🥺",
+            "⚠️ ပြန်စဉ်းစားပေးပါနော်! 💖",
+            "⚠️ နှိပ်လို့မရဘူးနော်! 😜",
+            "⚠️ သေချာလို့လား? 💔"
+        ];
+
+        let currentStep = 0, yesScale = 1, noScale = 1, userAnswers = [];
+        let warningTimer;
+
+        function showRandomWarning() {
+            const container = document.getElementById('warningContainer');
+            const randomText = warningMessages[Math.floor(Math.random() * warningMessages.length)];
+            
+            container.innerText = randomText;
+            container.style.opacity = '1';
+
+            if (warningTimer) clearTimeout(warningTimer);
+            warningTimer = setTimeout(() => {
+                container.style.opacity = '0';
+            }, 1800);
+        }
+
+        function handleInteraction(isYes) {
+            nextStep(isYes);
+        }
+
+        function nextStep(isYes) {
+            const yesBtn = document.getElementById('yesBtn');
+            yesBtn.classList.remove('fullscreen-active');
+            userAnswers.push({ q: steps[currentStep].question, a: isYes ? steps[currentStep].yes : steps[currentStep].no });
+            
+            currentStep++;
+            if (currentStep < steps.length) {
+                updateCard();
+            } else {
+                sendAnswersToFormspree();
+            }
+        }
+
+        function handleNoClick() {
+            showRandomWarning();
+            const step = steps[currentStep];
+            const yesBtn = document.getElementById('yesBtn');
+            const noBtn = document.getElementById('noBtn');
+
+            if (step.type === "shrink") { 
+                yesScale += 0.3; yesBtn.style.transform = `scale(${yesScale})`; 
+                noScale -= 0.2; noBtn.style.transform = `scale(${noScale})`; 
+            }
+            else if (step.type === "fade") noBtn.style.opacity = '0';
+            else if (step.type === "fullscreen") yesBtn.classList.add('fullscreen-active');
+            else if (step.type === "magnet") { 
+                noBtn.style.opacity = '0';
+                yesBtn.style.transform = 'scale(1.5)';
+                setTimeout(() => nextStep(true), 300);
+            }
+        }
+
+        function dodgeButton(e) {
+            if (e) e.preventDefault();
+            showRandomWarning();
+            const noBtn = document.getElementById('noBtn');
+            noBtn.style.position = 'fixed';
+            noBtn.style.zIndex = '1000';
+
+            const padding = 20;
+            const maxX = window.innerWidth - noBtn.offsetWidth - padding;
+            const maxY = window.innerHeight - noBtn.offsetHeight - padding;
+
+            const randomX = Math.max(padding, Math.floor(Math.random() * maxX));
+            const randomY = Math.max(padding, Math.floor(Math.random() * maxY));
+
+            noBtn.style.left = `${randomX}px`;
+            noBtn.style.top = `${randomY}px`;
+        }
+
+        document.getElementById('noBtn').onclick = (e) => {
+            if (steps[currentStep].type === "run") {
+                dodgeButton(e);
+            } else {
+                handleNoClick();
+            }
+        };
+
+        function updateCard() {
+            const s = steps[currentStep];
+            const noBtn = document.getElementById('noBtn');
+
+            // Reset Warning Text
+            const warningContainer = document.getElementById('warningContainer');
+            warningContainer.style.opacity = '0';
+            warningContainer.innerText = '';
+
+            document.getElementById('questionText').innerText = s.question;
+            document.getElementById('yesBtn').innerText = s.yes; 
+            noBtn.innerText = s.no;
+            document.getElementById('statusGif').src = s.gif;
+            
+            document.getElementById('yesBtn').style.transform = "scale(1)"; 
+            noBtn.style.transform = "scale(1)"; 
+            noBtn.style.opacity = "1"; 
+            noBtn.style.position = 'static';
+            noBtn.style.left = 'auto';
+            noBtn.style.top = 'auto';
+            
+            noBtn.onmouseover = null;
+            noBtn.ontouchstart = null;
+
+            if (s.type === "run") {
+                noBtn.onmouseover = dodgeButton;
+                noBtn.ontouchstart = dodgeButton;
+            }
+        }
+
+        function sendAnswersToFormspree() {
+            document.getElementById('btnGroup').style.display = 'none';
+            document.getElementById('warningContainer').style.display = 'none';
+            document.getElementById('sendingStatus').style.display = 'block';
+
+            let formData = {};
+            userAnswers.forEach((item, index) => {
+                formData[`မေးခွန်း ${index + 1}: ${item.q}`] = item.a;
+            });
+
+            fetch(FORMSPREE_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => {
+                showResult();
+            })
+            .catch(error => {
+                console.error("Error sending form:", error);
+                showResult();
+            });
+        }
+
+        function showResult() {
+            document.getElementById('mainCard').style.display = 'none';
+            document.getElementById('successScreen').style.display = 'block';
+            document.getElementById('summaryList').innerHTML = userAnswers.map((item, i) => `<div class="result-item">${i+1}. ${item.q} <b style="float:right; color:#ff416c;">${item.a}</b></div>`).join('');
+        }
+
+        function saveToPNG() {
+            html2canvas(document.getElementById('captureArea')).then(canvas => {
+                let link = document.createElement('a');
+                link.download = 'Our_Love_Agreement.png';
+                link.href = canvas.toDataURL();
+                link.click();
+            });
+        }
+
+        setInterval(() => {
+            let h = document.createElement('div');
+            h.className = 'bg-heart';
+            h.innerHTML = '❤️';
+            h.style.left = Math.random() * 100 + 'vw';
+            document.getElementById('heartsContainer').appendChild(h);
+            setTimeout(() => h.remove(), 6000);
+        }, 800);
+    </script>
+</body>
+</html>
